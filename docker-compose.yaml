@@ -1,0 +1,77 @@
+services:
+  processing_image_service:
+     build:
+       context: .
+       dockerfile: Dockerfile
+     container_name: processing_image_service
+     runtime: nvidia
+     deploy:
+       resources:
+         reservations:
+           devices:
+             - driver: nvidia
+               count: all
+               capabilities: [gpu]
+
+     ports:
+       - "10011:10011"
+     volumes:
+       - ./models:/app/models
+       - ./cache_dir:/app/cache_dir
+       - .:/app
+     environment:
+       - PORT=10011
+       # set the log level for the model server
+       - LOG_LEVEL=DEBUG
+       # any other parameters that you want to pass to the model server
+       - ANY=PARAMETER
+       # specify the number of workers and threads for the model server
+       - WORKERS=1
+       - THREADS=2
+       - DEBUG=false
+       - NVIDIA_VISIBLE_DEVICES=all
+       - NVIDIA_DRIVER_CAPABILITIES=all
+       - CUDA_VISIBLE_DEVICES=all
+       - PYTORCH_CUDA_ALLOC_CONF=max_split_size_mb:512
+       - OMP_NUM_THREADS=1
+       - CUDA_LAUNCH_BLOCKING=1
+     healthcheck:
+       test: [ "CMD", "python3", "-c", "import torch; assert torch.cuda.is_available()" ]
+       interval: 30s
+       timeout: 10s
+       retries: 3
+     depends_on:
+       - processing_image_db
+       - processing_image_pgadmin4
+     restart: unless-stopped
+
+  processing_image_db:
+      image: elestio/postgres:${SOFTWARE_VERSION_TAG}
+      shm_size: 1g
+      container_name: processing_image_db
+      restart: always
+      #command: -c ssl=on -c ssl_cert_file=/etc/ssl/certs/ssl-cert-snakeoil.pem -c ssl_key_file=/etc/ssl/private/ssl-cert-snakeoil.key
+      environment:
+        POSTGRES_DB: postgres
+        POSTGRES_USER: postgres
+        POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+        PGDATA: /var/lib/postgresql/data
+        TS_TUNE_MAX_CONNS: 100
+      volumes:
+        - ./data:/var/lib/postgresql/data
+      ports:
+        - "6438:5432"
+
+  processing_image_pgadmin4:
+      image: elestio/pgadmin:latest
+      container_name: processing_image_pgadmin4
+      restart: always
+      environment:
+        PGADMIN_DEFAULT_EMAIL: ${ADMIN_EMAIL}
+        PGADMIN_DEFAULT_PASSWORD: ${ADMIN_PASSWORD}
+        PGADMIN_LISTEN_PORT: 8080
+      ports:
+        - "8090:8080"
+      volumes:
+        - ./servers.json:/pgadmin4/servers.json
+        - ./pgadmin:/var/lib/pgadmin
