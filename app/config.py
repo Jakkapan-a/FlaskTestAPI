@@ -10,7 +10,7 @@ class Config:
     ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif'}
     MAX_CONTENT_LENGTH = 16 * 1024 * 1024 # 16MB
     DEBUG = os.getenv("DEBUG", "true").lower() == "true"
-    PORT = int(os.getenv("PORT", 10010))
+    PORT = int(os.getenv("PORT", 10011))
     SQLALCHEMY_DATABASE_URI = os.getenv('DATABASE_URL', 'sqlite:///db.sqlite3')
     SQLALCHEMY_TRACK_MODIFICATIONS = True
     LOG_FILE = 'logs/app.log'
